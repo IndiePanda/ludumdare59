@@ -5,13 +5,13 @@ using UnityEngine;
 
 public class SignalSystem : IDisposable
 {
-    private const int SignalsPerDay = 3;
     public const float MaxLatitude = 90f;
     public const float MaxLongitude = 180f;
 
     private readonly DaySystem _daySystem;
     private readonly EnergySystem _energySystem;
-    private readonly HashSet<int> _plannedSignalMinutes = new();
+    private readonly MessageSchedule _messageSchedule;
+    private readonly Dictionary<int, MessageData> _plannedMessagesByMinute = new();
     private static readonly char[] SendingSymbols =
     {
         '\u2554', '\u2557', '\u255A', '\u255D', '\u2560', '\u2563', '\u2566', '\u2569', '\u256C', '\u2551', '\u2550'
@@ -23,6 +23,7 @@ public class SignalSystem : IDisposable
     private DecoderCombination? _currentDecoderCombination;
     private bool _hasPendingSending;
     private string _currentSendingSequence;
+    private MessageData _currentMessageData;
 
     public bool HasPendingSignal => _hasPendingSignal;
     public bool HasPendingDecoding => _currentDecoderCombination.HasValue;
@@ -58,10 +59,25 @@ public class SignalSystem : IDisposable
         public int WaveHeight { get; }
     }
 
-    public SignalSystem(DaySystem daySystem, EnergySystem energySystem)
+    public readonly struct SendingContent
+    {
+        public SendingContent(string messageText, string answerAText, string answerBText)
+        {
+            MessageText = messageText;
+            AnswerAText = answerAText;
+            AnswerBText = answerBText;
+        }
+
+        public string MessageText { get; }
+        public string AnswerAText { get; }
+        public string AnswerBText { get; }
+    }
+
+    public SignalSystem(DaySystem daySystem, EnergySystem energySystem, MessageSchedule messageSchedule)
     {
         _daySystem = daySystem;
         _energySystem = energySystem;
+        _messageSchedule = messageSchedule;
         _daySystem.DayChanged += OnDayChanged;
         _daySystem.MinuteChanged += OnMinuteChanged;
 
@@ -73,13 +89,11 @@ public class SignalSystem : IDisposable
     {
         if (_isSignalInProgress)
         {
-            Debug.Log("Signal search already started.");
             return false;
         }
 
         if (!_hasPendingSignal)
         {
-            Debug.Log("No signal available for search.");
             return false;
         }
 
@@ -87,7 +101,6 @@ public class SignalSystem : IDisposable
         _hasPendingSignal = false;
         _isSignalInProgress = true;
         NotifySignalAvailabilityChanged();
-        Debug.Log("Player started searching for signal in SatelliteZone.");
         return true;
     }
 
@@ -130,6 +143,7 @@ public class SignalSystem : IDisposable
 
         _hasPendingSending = false;
         _currentSendingSequence = null;
+        _currentMessageData = null;
         NotifySignalAvailabilityChanged();
         return true;
     }
@@ -142,15 +156,14 @@ public class SignalSystem : IDisposable
         _hasPendingSignal = false;
         _hasPendingSending = false;
         _currentSendingSequence = null;
+        _currentMessageData = null;
         NotifySignalAvailabilityChanged();
         ScheduleSignalsForDay(day);
     }
 
     private void OnMinuteChanged(int day, int minute)
     {
-        bool signalCreatedThisMinute = false;
-
-        if (_plannedSignalMinutes.Contains(minute))
+        if (_plannedMessagesByMinute.TryGetValue(minute, out MessageData messageData))
         {
             if (_isSignalInProgress || _hasPendingSignal || HasPendingDecoding || _hasPendingSending)
             {
@@ -159,30 +172,44 @@ public class SignalSystem : IDisposable
 
             SignalTarget signalTarget = CreateRandomSignalTarget();
             _currentSignalTarget = signalTarget;
+            _currentMessageData = messageData;
             _hasPendingSignal = true;
             NotifySignalAvailabilityChanged();
-            signalCreatedThisMinute = true;
-            Debug.Log($"Signal created on day {day} at {FormatTime(minute)}. Target: {signalTarget.Latitude:F3}, {signalTarget.Longitude:F3}");
-        }
-
-        if (!signalCreatedThisMinute && _hasPendingSignal)
-        {
-            //Debug.Log($"Signal is waiting for accept. Day {day}, time {FormatTime(minute)}. Pending signals: {_pendingSignalsCount}.");
+            //Debug.Log($"Signal created on day {day} at {FormatTime(minute)}. Target: {signalTarget.Latitude:F3}, {signalTarget.Longitude:F3}. Message: {messageData.messageText}");
         }
     }
 
     private void ScheduleSignalsForDay(int day)
     {
-        _plannedSignalMinutes.Clear();
+        _plannedMessagesByMinute.Clear();
 
-        while (_plannedSignalMinutes.Count < SignalsPerDay)
+        if (_messageSchedule == null || _messageSchedule.days == null)
         {
-            var randomMinute = UnityEngine.Random.Range(0, DaySystem.DayDurationMinutes);
-            Debug.Log(randomMinute);
-            _plannedSignalMinutes.Add(randomMinute);
+            return;
         }
 
-        Debug.Log($"Signal schedule prepared for day {day}.");
+        for (int i = 0; i < _messageSchedule.days.Count; i++)
+        {
+            DayData dayData = _messageSchedule.days[i];
+            if (dayData == null || dayData.dayIndex != day || dayData.messages == null)
+            {
+                continue;
+            }
+
+            for (int j = 0; j < dayData.messages.Count; j++)
+            {
+                MessageData messageData = dayData.messages[j];
+                if (messageData == null)
+                {
+                    continue;
+                }
+
+                int minute = ConvertScheduleTimeToMinute(messageData.time);
+                _plannedMessagesByMinute[minute] = messageData;
+            }
+
+            break;
+        }
     }
 
     private void NotifySignalAvailabilityChanged()
@@ -231,6 +258,21 @@ public class SignalSystem : IDisposable
         return false;
     }
 
+    public bool TryGetCurrentSendingContent(out SendingContent sendingContent)
+    {
+        if (_currentMessageData != null)
+        {
+            sendingContent = new SendingContent(
+                _currentMessageData.messageText,
+                _currentMessageData.answerA != null ? _currentMessageData.answerA.text : string.Empty,
+                _currentMessageData.answerB != null ? _currentMessageData.answerB.text : string.Empty);
+            return true;
+        }
+
+        sendingContent = default;
+        return false;
+    }
+
     private static SignalTarget CreateRandomSignalTarget()
     {
         float latitude = UnityEngine.Random.Range(0f, MaxLatitude);
@@ -260,6 +302,14 @@ public class SignalSystem : IDisposable
         }
 
         return sequenceBuilder.ToString();
+    }
+
+    private static int ConvertScheduleTimeToMinute(float time)
+    {
+        int hours = Mathf.FloorToInt(time);
+        int minutes = Mathf.RoundToInt((time - hours) * 100f);
+        int totalMinutes = (hours - DaySystem.StartHour) * 60 + minutes;
+        return Mathf.Clamp(totalMinutes, 0, DaySystem.DayDurationMinutes);
     }
 
     public void Dispose()

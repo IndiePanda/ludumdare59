@@ -5,7 +5,7 @@ public class JoystickElement : Element
     private const float SliderRange = 230f;
     private const float MaxLatitude = 90f;
     private const float MaxLongitude = 180f;
-    private const float LongitudeChangeSpeed = 2f;
+    private const float LongitudeChangeSpeed = 3f;
     private const float LatitudeChangeSpeed = LongitudeChangeSpeed * MaxLatitude / MaxLongitude;
 
     [SerializeField] private int _positionCount;

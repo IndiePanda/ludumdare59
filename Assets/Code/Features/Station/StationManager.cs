@@ -11,23 +11,24 @@ public class StationManager : MonoBehaviour
 
     private TriggerPopupHandler _triggerPopupHandler;
     private SignalSystem _signalSystem;
-    private bool _canInteractWithRecieverZone;
+    private EnergySystem _energySystem;
     private StationZoneType? _currentZoneType;
     private bool _isCurrentZoneInteractive;
     public event Action ZoneEntered;
     public event Action ZoneExited;
 
     [Inject]
-    private void Construct(TriggerPopupHandler triggerPopupHandler, SignalSystem signalSystem)
+    private void Construct(TriggerPopupHandler triggerPopupHandler, SignalSystem signalSystem, EnergySystem energySystem)
     {
         _triggerPopupHandler = triggerPopupHandler;
         _signalSystem = signalSystem;
+        _energySystem = energySystem;
     }
 
     private void OnEnable()
     {
         _signalSystem.SignalAvailabilityChanged += OnSignalAvailabilityChanged;
-        _recieverZone.InteractionAvailabilityChanged += OnRecieveZoneInteractionAvailabilityChanged;
+        _energySystem.ChangeEnergy += OnEnergyChanged;
         _recieverZone.ZoneEntered += OnRecieveZoneZoneEntered;
         _recieverZone.ZoneExited += OnRecieveZoneZoneExited;
 
@@ -37,15 +38,17 @@ public class StationManager : MonoBehaviour
         _senderZone.ZoneEntered += OnSenderZoneEntered;
         _senderZone.ZoneExited += OnSenderZoneExited;
 
+        _energyZone.AvailabilityChanged += OnEnergyZoneAvailabilityChanged;
         _energyZone.ZoneEntered += OnEnergyZoneEntered;
         _energyZone.ZoneExited += OnEnergyZoneExited;
 
+        UpdateZoneFrames();
     }
 
     private void OnDisable()
     {
         _signalSystem.SignalAvailabilityChanged -= OnSignalAvailabilityChanged;
-        _recieverZone.InteractionAvailabilityChanged -= OnRecieveZoneInteractionAvailabilityChanged;
+        _energySystem.ChangeEnergy -= OnEnergyChanged;
         _recieverZone.ZoneEntered -= OnRecieveZoneZoneEntered;
         _recieverZone.ZoneExited -= OnRecieveZoneZoneExited;
 
@@ -55,10 +58,15 @@ public class StationManager : MonoBehaviour
         _senderZone.ZoneEntered -= OnSenderZoneEntered;
         _senderZone.ZoneExited -= OnSenderZoneExited;
 
+        _energyZone.AvailabilityChanged -= OnEnergyZoneAvailabilityChanged;
         _energyZone.ZoneEntered -= OnEnergyZoneEntered;
         _energyZone.ZoneExited -= OnEnergyZoneExited;
 
         ClearCurrentZone();
+        SetZoneFrameActive(_recieverZone, false);
+        SetZoneFrameActive(_decoderZone, false);
+        SetZoneFrameActive(_energyZone, false);
+        SetZoneFrameActive(_senderZone, false);
     }
 
     private void Update()
@@ -70,26 +78,40 @@ public class StationManager : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.E))
         {
-            _triggerPopupHandler.Open(_currentZoneType.Value);
+            if (_currentZoneType.Value == StationZoneType.Energy)
+            {
+                _energyZone.TryCollectZone();
+            }
+            else
+            {
+                _triggerPopupHandler.Open(_currentZoneType.Value);
+            }
+            
         }
     }
 
     private void OnSignalAvailabilityChanged()
     {
         RefreshCurrentZoneState();
-        Debug.Log("RefreshCurrentZoneState");
+        UpdateZoneFrames();
+    }
+
+    private void OnEnergyChanged(int currentEnergy)
+    {
+        RefreshCurrentZoneState();
+        UpdateZoneFrames();
+    }
+
+    private void OnEnergyZoneAvailabilityChanged(bool isAvailable)
+    {
+        RefreshCurrentZoneState();
+        UpdateZoneFrames();
     }
 
 
     private void OnRecieveZoneZoneEntered()
     {
         SetCurrentZone(StationZoneType.Reciever);
-    }
-
-    private void OnRecieveZoneInteractionAvailabilityChanged(bool canInteract)
-    {
-        _canInteractWithRecieverZone = canInteract;
-        RefreshCurrentZoneState();
     }
 
     private void OnRecieveZoneZoneExited()
@@ -181,22 +203,45 @@ public class StationManager : MonoBehaviour
             return false;
         }
 
-        if (_currentZoneType != StationZoneType.Reciever)
+        return CanInteractWithZone(_currentZoneType.Value);
+    }
+
+    private bool CanInteractWithZone(StationZoneType zoneType)
+    {
+        if (zoneType == StationZoneType.Reciever)
         {
-            if (_currentZoneType == StationZoneType.Decoder)
-            {
-                return _signalSystem.HasPendingDecoding;
-            }
-
-            if (_currentZoneType == StationZoneType.Sender)
-            {
-                return _signalSystem.HasPendingSending;
-            }
-
-            return true;
+            return _signalSystem.HasPendingSignal && _energySystem.CurrentEnergy > 0;
         }
 
-        return _signalSystem.HasPendingSignal && _canInteractWithRecieverZone;
+        if (zoneType == StationZoneType.Decoder)
+        {
+            return _signalSystem.HasPendingDecoding;
+        }
+
+        if (zoneType == StationZoneType.Sender)
+        {
+            return _signalSystem.HasPendingSending;
+        }
+
+        return _energyZone != null && _energyZone.IsAvailable;
+    }
+
+    private void UpdateZoneFrames()
+    {
+        SetZoneFrameActive(_recieverZone, CanInteractWithZone(StationZoneType.Reciever));
+        SetZoneFrameActive(_decoderZone, CanInteractWithZone(StationZoneType.Decoder));
+        SetZoneFrameActive(_energyZone, CanInteractWithZone(StationZoneType.Energy));
+        SetZoneFrameActive(_senderZone, CanInteractWithZone(StationZoneType.Sender));
+    }
+
+    private static void SetZoneFrameActive(MonoBehaviour zone, bool isActive)
+    {
+        if (zone == null || zone.transform.childCount == 0)
+        {
+            return;
+        }
+
+        zone.transform.GetChild(0).gameObject.SetActive(isActive);
     }
 
 }

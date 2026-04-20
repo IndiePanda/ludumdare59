@@ -1,6 +1,7 @@
 using UnityEngine;
 using Zenject;
 
+[RequireComponent(typeof(CharacterController))]
 public class CharacterMovement : MonoBehaviour
 {
     [SerializeField] private float _moveSpeed;
@@ -10,6 +11,7 @@ public class CharacterMovement : MonoBehaviour
 
     private TriggerPopupHandler _triggerPopupHandler;
     private EnergySystem _energySystem;
+    private CharacterController _characterController;
 
     [Inject]
     private void Construct(
@@ -24,15 +26,25 @@ public class CharacterMovement : MonoBehaviour
 
     private void OnEnergyChanged(int value)
     {
-        Debug.Log(value);
         _moveSpeedCalculated = _moveSpeed - (4 - value) * 0.1f;
     }
 
     private void Awake()
     {
+        _characterController = GetComponent<CharacterController>();
+        _moveSpeedCalculated = _moveSpeed;
+
         if (_characterMesh == null && transform.childCount > 0)
         {
             _characterMesh = transform.GetChild(0);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (_energySystem != null)
+        {
+            _energySystem.ChangeEnergy -= OnEnergyChanged;
         }
     }
 
@@ -51,7 +63,7 @@ public class CharacterMovement : MonoBehaviour
             input.Normalize();
         }
 
-        transform.position += input * (_moveSpeedCalculated * Time.deltaTime);
+        _characterController.Move(input * (_moveSpeedCalculated * Time.deltaTime));
 
 
         if (_characterMesh != null && input.sqrMagnitude > 0.0001f)

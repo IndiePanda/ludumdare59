@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using Zenject;
 
 public class MainMenu : MonoBehaviour
 {
@@ -8,6 +9,13 @@ public class MainMenu : MonoBehaviour
 
     private Rect _uvRect;
     private Button[] _buttons;
+    private TutorialSystem _tutorialSystem;
+
+    [Inject]
+    private void Construct(TutorialSystem tutorialSystem)
+    {
+        _tutorialSystem = tutorialSystem;
+    }
 
     private void Awake()
     {
@@ -51,6 +59,7 @@ public class MainMenu : MonoBehaviour
     {
         Time.timeScale = 1f;
         gameObject.SetActive(false);
+        _tutorialSystem?.TryShowOnGameStart();
     }
 
     private static bool IsAnyKeyboardKeyDown()

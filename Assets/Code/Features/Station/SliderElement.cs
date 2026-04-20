@@ -1,4 +1,5 @@
 using UnityEngine;
+using Zenject;
 
 public class SliderElement : Element
 {
@@ -11,6 +12,7 @@ public class SliderElement : Element
     private Vector3 _defaultLocalPosition;
     private Vector2 _defaultAnchoredPosition;
     private int _currentPosition;
+    private SFXAudio _sfxAudio;
 
     public int CurrentPosition => _currentPosition;
 
@@ -48,6 +50,13 @@ public class SliderElement : Element
         }
 
         ApplyVisualState();
+        _sfxAudio?.PlaySwitch();
+    }
+
+    [Inject]
+    private void Construct(SFXAudio sfxAudio)
+    {
+        _sfxAudio = sfxAudio;
     }
 
     private void ApplyVisualState()

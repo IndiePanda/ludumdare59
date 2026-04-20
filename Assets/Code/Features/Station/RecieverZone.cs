@@ -5,8 +5,10 @@ using Zenject;
 public class RecieverZone : MonoBehaviour
 {
     [SerializeField] private string _ID;
+    [SerializeField] private AudioSource _signalAudioSource;
     private bool _isBroken;
     private EnergySystem _energySystem;
+    private SignalSystem _signalSystem;
     private bool _isCharacterInsideZone;
 
     public event Action ZoneEntered;
@@ -14,10 +16,13 @@ public class RecieverZone : MonoBehaviour
     public event Action<bool> InteractionAvailabilityChanged;
 
     [Inject]
-    private void Construct(EnergySystem energySystem)
+    private void Construct(EnergySystem energySystem, SignalSystem signalSystem)
     {
         _energySystem = energySystem;
+        _signalSystem = signalSystem;
         _energySystem.ChangeEnergy += OnEnergyChanged;
+        _signalSystem.SignalAvailabilityChanged += OnSignalAvailabilityChanged;
+        UpdateSignalAudio();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -28,6 +33,7 @@ public class RecieverZone : MonoBehaviour
         }
 
         _isCharacterInsideZone = true;
+        UpdateSignalAudio();
         NotifyInteractionAvailabilityChanged();
         ZoneEntered?.Invoke();
     }
@@ -40,6 +46,7 @@ public class RecieverZone : MonoBehaviour
         }
 
         _isCharacterInsideZone = false;
+        UpdateSignalAudio();
         ZoneExited?.Invoke();
     }
 
@@ -48,6 +55,16 @@ public class RecieverZone : MonoBehaviour
         if (_energySystem != null)
         {
             _energySystem.ChangeEnergy -= OnEnergyChanged;
+        }
+
+        if (_signalSystem != null)
+        {
+            _signalSystem.SignalAvailabilityChanged -= OnSignalAvailabilityChanged;
+        }
+
+        if (_signalAudioSource != null && _signalAudioSource.isPlaying)
+        {
+            _signalAudioSource.Stop();
         }
     }
 
@@ -74,6 +91,35 @@ public class RecieverZone : MonoBehaviour
     private void NotifyInteractionAvailabilityChanged(bool canInteract)
     {
         InteractionAvailabilityChanged?.Invoke(canInteract);
+    }
+
+    private void OnSignalAvailabilityChanged()
+    {
+        UpdateSignalAudio();
+    }
+
+    private void UpdateSignalAudio()
+    {
+        if (_signalAudioSource == null)
+        {
+            return;
+        }
+
+        bool shouldPlay = _signalSystem != null && _signalSystem.HasPendingSignal && !_isCharacterInsideZone;
+        if (shouldPlay)
+        {
+            if (!_signalAudioSource.isPlaying)
+            {
+                _signalAudioSource.Play();
+            }
+
+            return;
+        }
+
+        if (_signalAudioSource.isPlaying)
+        {
+            _signalAudioSource.Stop();
+        }
     }
 
     private void Broke()

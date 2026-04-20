@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using Zenject;
 
 public class SwitchElement : Element
 {
@@ -10,6 +11,8 @@ public class SwitchElement : Element
     private const int PositionCount = 2;
 
     private int _currentPosition;
+
+    private SFXAudio _sfxAudio;
 
     public int CurrentPosition => _currentPosition;
 
@@ -32,6 +35,14 @@ public class SwitchElement : Element
         }
 
         ApplyVisualState();
+
+        _sfxAudio?.PlaySwitch();
+    }
+
+    [Inject]
+    private void Construct(SFXAudio sfxAudio)
+    {
+        _sfxAudio = sfxAudio;
     }
 
     private void ApplyVisualState()

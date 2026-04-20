@@ -16,7 +16,6 @@ public class PressButtonHint : MonoBehaviour
 
     public void Show()
     {
-        Debug.Log("Show");
         gameObject.SetActive(true);
     }
 

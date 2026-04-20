@@ -2216,7 +2216,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Q / E - Select controll     WASD - Change position
+  m_text: Q / E - Select control   WASD - Change position   R - Exit
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: d1aa786043e45d040a933375c90869d9, type: 2}
   m_sharedMaterial: {fileID: 6217812269048709849, guid: d1aa786043e45d040a933375c90869d9, type: 2}

@@ -1,4 +1,5 @@
 using UnityEngine;
+using Zenject;
 
 public class RoundSwitchElement : Element
 {
@@ -9,6 +10,7 @@ public class RoundSwitchElement : Element
 
     private int _currentPosition;
     private Quaternion _defaultRotation;
+    private SFXAudio _sfxAudio;
 
     public int CurrentPosition => _currentPosition;
 
@@ -36,6 +38,13 @@ public class RoundSwitchElement : Element
         }
 
         ApplyVisualState();
+        _sfxAudio?.PlaySwitch();
+    }
+
+    [Inject]
+    private void Construct(SFXAudio sfxAudio)
+    {
+        _sfxAudio = sfxAudio;
     }
 
     private void ApplyVisualState()

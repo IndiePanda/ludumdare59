@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 815e3f24dfc35f14c9ebdbe7be0dcc96, type: 3}
+  m_Name: TutorialTextBase
+  m_EditorClassIdentifier: Assembly-CSharp::TutorialTextBase
+  Text:
+  - I'm just a lonely Signal Keeper
+  - When the alert sounds, I must receive the signal.
+  - After receiving the signal, I need to decode it.
+  - My energy is running low, so I need to recharge.
+  - After decoding the signal, I send the message.

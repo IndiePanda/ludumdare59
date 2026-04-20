@@ -1,36 +1,55 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using Zenject;
 
 public class SenderView : MonoBehaviour
 {
     [SerializeField] private DecoderPresenter _presenter;
+    [SerializeField] private SymbolButtonElement[] _symbolButtonList;
     [SerializeField] private Element[] _elementList;
     [SerializeField] private TextMeshProUGUI _encryptedeText;
     [SerializeField] private TextMeshProUGUI _decryptedText;
     [SerializeField] private GameObject _decryptedPanel;
+    [SerializeField] private Image[] _signalDetectorList;
+    [SerializeField] private Sprite _activeSignalDetectorSprite;
+    [SerializeField] private Sprite _inactiveSignalDetectorSprite;
 
     private TriggerPopupHandler _triggerPopupHandler;
     private SignalSystem _signalSystem;
+    private CompletePanelView _completePanel;
     private int _activeElementIndex = -1;
     private string _encryptedSequence = string.Empty;
     private string _enteredSequence = string.Empty;
+    private string _messageText = string.Empty;
+    private bool _isCompleting;
 
     [Inject]
-    private void Construct(TriggerPopupHandler triggerPopupHandler, SignalSystem signalSystem)
+    private void Construct(TriggerPopupHandler triggerPopupHandler, SignalSystem signalSystem, CompletePanelView completePanel)
     {
         _triggerPopupHandler = triggerPopupHandler;
         _signalSystem = signalSystem;
+        _completePanel = completePanel;
     }
 
     private void Start()
     {
-        SetActiveElement(GetFirstAvailableElementIndex());
         RefreshState();
+        SetActiveElement(GetFirstAvailableElementIndex(GetActiveElementList()));
+
+        if (_completePanel != null)
+        {
+            _completePanel.gameObject.SetActive(false);
+        }
     }
 
     private void Update()
     {
+        if (_isCompleting)
+        {
+            return;
+        }
+
         if (Input.GetKeyDown(KeyCode.R))
         {
             ClosePopup();
@@ -61,26 +80,46 @@ public class SenderView : MonoBehaviour
             _encryptedSequence = string.Empty;
         }
 
+        if (_signalSystem != null && _signalSystem.TryGetCurrentSendingContent(out SignalSystem.SendingContent sendingContent))
+        {
+            _messageText = sendingContent.MessageText;
+            SetAnswerButtonTexts(sendingContent.AnswerAText, sendingContent.AnswerBText);
+        }
+        else
+        {
+            _messageText = string.Empty;
+            SetAnswerButtonTexts(string.Empty, string.Empty);
+        }
+
         _enteredSequence = string.Empty;
         _encryptedeText.text = _encryptedSequence;
         _decryptedText.text = _enteredSequence;
         _decryptedPanel.SetActive(false);
+        SetAllDetectorsInactive();
     }
 
     private void ActivateCurrentElement()
     {
-        if (_activeElementIndex < 0 || _activeElementIndex >= _elementList.Length)
+        Element[] activeElementList = GetActiveElementList();
+        if (activeElementList == null || _activeElementIndex < 0 || _activeElementIndex >= activeElementList.Length)
         {
             return;
         }
 
-        Element activeElement = _elementList[_activeElementIndex];
-        if (activeElement is not SymbolButtonElement symbolButtonElement)
+        Element activeElement = activeElementList[_activeElementIndex];
+        if (activeElement is SymbolButtonElement symbolButtonElement)
         {
+            SubmitSymbol(symbolButtonElement.Symbol);
             return;
         }
 
-        SubmitSymbol(symbolButtonElement.Symbol);
+        if (activeElement is SendButtonElement)
+        {
+            if (_signalSystem.TryCompleteSending())
+            {
+                CompleteAndClose();
+            }
+        }
     }
 
     private void SubmitSymbol(char selectedSymbol)
@@ -95,10 +134,12 @@ public class SenderView : MonoBehaviour
         if (selectedSymbol == expectedSymbol)
         {
             _enteredSequence += selectedSymbol;
+            SetDetectorState(_enteredSequence.Length - 1, true);
         }
         else
         {
             _enteredSequence = string.Empty;
+            SetAllDetectorsInactive();
         }
 
         if (_decryptedText != null)
@@ -113,7 +154,63 @@ public class SenderView : MonoBehaviour
                 _decryptedPanel.SetActive(true);
             }
 
-            _signalSystem.TryCompleteSending();
+            _decryptedText.text = _messageText;
+            SwitchActiveElementGroup();
+        }
+    }
+
+    private void SetAnswerButtonTexts(string answerAText, string answerBText)
+    {
+        if (_elementList == null)
+        {
+            return;
+        }
+
+        int answerIndex = 0;
+
+        for (int i = 0; i < _elementList.Length; i++)
+        {
+            if (_elementList[i] is not SendButtonElement sendButtonElement)
+            {
+                continue;
+            }
+
+            sendButtonElement.SetText(answerIndex == 0 ? answerAText : answerBText);
+            answerIndex++;
+
+            if (answerIndex >= 2)
+            {
+                return;
+            }
+        }
+    }
+
+    private void SetDetectorState(int detectorIndex, bool isActive)
+    {
+        if (_signalDetectorList == null || detectorIndex < 0 || detectorIndex >= _signalDetectorList.Length)
+        {
+            return;
+        }
+
+        Image detector = _signalDetectorList[detectorIndex];
+        if (detector == null)
+        {
+            return;
+        }
+
+        detector.sprite = isActive ? _activeSignalDetectorSprite : _inactiveSignalDetectorSprite;
+    }
+
+    private void SetAllDetectorsInactive()
+    {
+        if (_signalDetectorList == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < _signalDetectorList.Length; i++)
+        {
+            SetDetectorState(i, false);
         }
     }
 
@@ -134,12 +231,13 @@ public class SenderView : MonoBehaviour
 
     private void MoveSelection(Vector2 direction)
     {
-        if (_elementList == null || _elementList.Length == 0)
+        Element[] activeElementList = GetActiveElementList();
+        if (activeElementList == null || activeElementList.Length == 0)
         {
             return;
         }
 
-        int currentIndex = _activeElementIndex >= 0 ? _activeElementIndex : GetFirstAvailableElementIndex();
+        int currentIndex = _activeElementIndex >= 0 ? _activeElementIndex : GetFirstAvailableElementIndex(activeElementList);
         if (currentIndex < 0)
         {
             return;
@@ -149,11 +247,11 @@ public class SenderView : MonoBehaviour
         int nextIndex = currentIndex;
         int checkedCount = 0;
 
-        while (checkedCount < _elementList.Length)
+        while (checkedCount < activeElementList.Length)
         {
-            nextIndex = (nextIndex + step + _elementList.Length) % _elementList.Length;
+            nextIndex = (nextIndex + step + activeElementList.Length) % activeElementList.Length;
 
-            if (_elementList[nextIndex] != null)
+            if (activeElementList[nextIndex] != null)
             {
                 SetActiveElement(nextIndex);
                 return;
@@ -165,34 +263,52 @@ public class SenderView : MonoBehaviour
 
     private void SetActiveElement(int elementIndex)
     {
-        if (_elementList == null || elementIndex < 0 || elementIndex >= _elementList.Length)
+        Element[] activeElementList = GetActiveElementList();
+        if (activeElementList == null || elementIndex < 0 || elementIndex >= activeElementList.Length)
         {
             return;
         }
 
-        if (_activeElementIndex >= 0 && _activeElementIndex < _elementList.Length && _elementList[_activeElementIndex] != null)
+        if (_activeElementIndex >= 0 && _activeElementIndex < activeElementList.Length && activeElementList[_activeElementIndex] != null)
         {
-            _elementList[_activeElementIndex].SetActive(false);
+            activeElementList[_activeElementIndex].SetActive(false);
         }
 
         _activeElementIndex = elementIndex;
 
-        if (_elementList[_activeElementIndex] != null)
+        if (activeElementList[_activeElementIndex] != null)
         {
-            _elementList[_activeElementIndex].SetActive(true);
+            activeElementList[_activeElementIndex].SetActive(true);
         }
     }
 
-    private int GetFirstAvailableElementIndex()
+    private void SwitchActiveElementGroup()
     {
-        if (_elementList == null)
+        Element[] previousElementList = _decryptedPanel != null && _decryptedPanel.activeSelf ? _symbolButtonList : _elementList;
+        if (previousElementList != null && _activeElementIndex >= 0 && _activeElementIndex < previousElementList.Length && previousElementList[_activeElementIndex] != null)
+        {
+            previousElementList[_activeElementIndex].SetActive(false);
+        }
+
+        _activeElementIndex = -1;
+        SetActiveElement(GetFirstAvailableElementIndex(GetActiveElementList()));
+    }
+
+    private Element[] GetActiveElementList()
+    {
+        return _decryptedPanel != null && _decryptedPanel.activeSelf ? _elementList : _symbolButtonList;
+    }
+
+    private int GetFirstAvailableElementIndex(Element[] elementList)
+    {
+        if (elementList == null)
         {
             return -1;
         }
 
-        for (int i = 0; i < _elementList.Length; i++)
+        for (int i = 0; i < elementList.Length; i++)
         {
-            if (_elementList[i] != null)
+            if (elementList[i] != null)
             {
                 return i;
             }
@@ -205,5 +321,21 @@ public class SenderView : MonoBehaviour
     {
         _triggerPopupHandler.CloseCurrent();
         Destroy(gameObject);
+    }
+
+    private void CompleteAndClose()
+    {
+        if (_isCompleting)
+        {
+            return;
+        }
+
+        _isCompleting = true;
+
+        if (_completePanel != null)
+        {
+            _completePanel.gameObject.SetActive(true);
+        }
+        ClosePopup();
     }
 }

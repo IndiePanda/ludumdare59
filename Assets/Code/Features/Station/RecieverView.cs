@@ -18,20 +18,28 @@ public class RecieverView : MonoBehaviour
 
     private TriggerPopupHandler _triggerPopupHandler;
     private SignalSystem _signalSystem;
+    private CompletePanelView _completePanel;
+    private bool _isCompleting;
 
     private int _activeElementIndex = -1;
 
     [Inject]
-    private void Construct(TriggerPopupHandler triggerPopupHandler, SignalSystem signalSystem)
+    private void Construct(TriggerPopupHandler triggerPopupHandler, SignalSystem signalSystem, CompletePanelView completePanel)
     {
         _triggerPopupHandler = triggerPopupHandler;
         _signalSystem = signalSystem;
+        _completePanel = completePanel;
     }
 
     void Start()
     {
         SetActiveElement(GetFirstAvailableElementIndex());
         UpdateCoordinatesValue();
+
+        if (_completePanel != null)
+        {
+            _completePanel.gameObject.SetActive(false);
+        }
     }
 
     private void ClosePopup()
@@ -42,6 +50,11 @@ public class RecieverView : MonoBehaviour
 
     void Update()
     {
+        if (_isCompleting)
+        {
+            return;
+        }
+
         if (Input.GetKeyDown(KeyCode.R))
         {
             ClosePopup();
@@ -273,7 +286,23 @@ public class RecieverView : MonoBehaviour
 
         if (activeDetectorCount == 4 && _signalSystem != null && _signalSystem.TryReceiveSignal())
         {
-            ClosePopup();
+            CompleteAndClose();
         }
+    }
+
+    private void CompleteAndClose()
+    {
+        if (_isCompleting)
+        {
+            return;
+        }
+
+        _isCompleting = true;
+
+        if (_completePanel != null)
+        {
+            _completePanel.gameObject.SetActive(true);
+        }
+        ClosePopup();
     }
 }

@@ -23,15 +23,18 @@ public class DecoderView : MonoBehaviour
 
     private TriggerPopupHandler _triggerPopupHandler;
     private SignalSystem _signalSystem;
+    private CompletePanelView _completePanel;
 
     private int _activeElementIndex = -1;
     private Rect _uvRect;
+    private bool _isCompleting;
 
     [Inject]
-    private void Construct(TriggerPopupHandler triggerPopupHandler, SignalSystem signalSystem)
+    private void Construct(TriggerPopupHandler triggerPopupHandler, SignalSystem signalSystem, CompletePanelView completePanel)
     {
         _triggerPopupHandler = triggerPopupHandler;
         _signalSystem = signalSystem;
+        _completePanel = completePanel;
     }
 
     void Start()
@@ -39,6 +42,11 @@ public class DecoderView : MonoBehaviour
         SetActiveElement(GetFirstAvailableElementIndex());
         _uvRect = _signalImage.uvRect;
         UpdateDecoderState();
+
+        if (_completePanel != null)
+        {
+            _completePanel.gameObject.SetActive(false);
+        }
     }
 
     private void ClosePopup()
@@ -49,6 +57,11 @@ public class DecoderView : MonoBehaviour
 
     void Update()
     {
+        if (_isCompleting)
+        {
+            return;
+        }
+
         _uvRect.x += _signalScrollSpeed * Time.deltaTime;
         _signalImage.uvRect = _uvRect;
 
@@ -216,8 +229,24 @@ public class DecoderView : MonoBehaviour
             && waveHeightValue == decoderCombination.WaveHeight
             && _signalSystem.TryCompleteDecoding())
         {
-            ClosePopup();
+            CompleteAndClose();
         }
+    }
+
+    private void CompleteAndClose()
+    {
+        if (_isCompleting)
+        {
+            return;
+        }
+
+        _isCompleting = true;
+
+        if (_completePanel != null)
+        {
+            _completePanel.gameObject.SetActive(true);
+        }
+        ClosePopup();
     }
 
     private void UpdateSignalType(int signalTypeValue)

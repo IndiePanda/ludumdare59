@@ -1,0 +1,108 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57ea38f2467e8054187a152e7b4f838e, type: 3}
+  m_Name: MessageConfig
+  m_EditorClassIdentifier: Assembly-CSharp::MessageSchedule
+  days:
+  - dayIndex: 1
+    messages:
+    - messageText: "If I could go back \u2014 I would just spend more time with you.
+        No rush. Just being there."
+      time: 10
+      answerA:
+        text: Time locked
+      answerB:
+        text: Moment gone
+    - messageText: "If I could say only one thing \u2014 I would say: forgive me.
+        And thank you for everything I had because of you."
+      time: 18
+      answerA:
+        text: Forgiveness undefined
+      answerB:
+        text: Gratitude stored
+  - dayIndex: 2
+    messages:
+    - messageText: I miss our late-night talks. Space is too quiet without you. Please
+        answer.
+      time: 15
+      answerA:
+        text: Responding
+      answerB:
+        text: Silence remains
+    - messageText: I pretended I didn't need support. The truth is, I just didn't
+        know how to accept it.
+      time: 10
+      answerA:
+        text: Signal received
+      answerB:
+        text: Access denied
+  - dayIndex: 3
+    messages:
+    - messageText: Tell me what to do. I'm lost. Should I kill the traitor?
+      time: 16
+      answerA:
+        text: No directive
+      answerB:
+        text: Choice invalid
+    - messageText: "I often chose work over family. Told myself I was doing it for
+        you. But really \u2014 I was just running away."
+      time: 10
+      answerA:
+        text: Truth detected
+      answerB:
+        text: Trace lost
+  - dayIndex: 4
+    messages:
+    - messageText: Why are you silent? Say something. Anything!
+      time: 18
+      answerA:
+        text: Silence active
+      answerB:
+        text: Message corrupted
+    - messageText: I got used to you accepting me as I am. So I stopped trying to
+        be better. That wasn't fair to you.
+      time: 13
+      answerA:
+        text: State unchanged
+      answerB:
+        text: Adjustment failed
+  - dayIndex: 5
+    messages:
+    - messageText: "If you're hearing this \u2014 know that I'm not running anymore.
+        I want to come back. To you."
+      time: 19
+      answerA:
+        text: Path blocked
+      answerB:
+        text: Return pending
+    - messageText: I'm tired of being strong. With you, I could just be myself. I
+        miss that.
+      time: 11
+      answerA:
+        text: Load high
+      answerB:
+        text: Core stable
+  - dayIndex: 6
+    messages:
+    - messageText: Are you still there? Or am I just talking to the void?
+      time: 17
+      answerA:
+        text: Presence unclear
+      answerB:
+        text: Void listening
+    - messageText: I didn't notice life passing by. Until I looked back and realized
+        so much is already behind me.
+      time: 12
+      answerA:
+        text: Time elapsed
+      answerB:
+        text: Record saved
