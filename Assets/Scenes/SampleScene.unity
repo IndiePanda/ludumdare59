@@ -5852,6 +5852,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   _audioSource: {fileID: 1593734343}
   _switchClip: {fileID: 8300000, guid: 54790216b4996404b8944e963569605c, type: 3}
+  _lootClip: {fileID: 8300000, guid: 4582fd89b31e4a14dbebe68f099a2c03, type: 3}
 --- !u!65 &1609385225
 BoxCollider:
   m_ObjectHideFlags: 0

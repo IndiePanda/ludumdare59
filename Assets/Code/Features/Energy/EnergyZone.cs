@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Zenject;
 
 public class EnergyZone : MonoBehaviour
 {
@@ -9,6 +10,7 @@ public class EnergyZone : MonoBehaviour
     private float _nextRestoreTime;
     private bool _isCharacterInsideZone;
     private bool _isAvailable = true;
+    private SFXAudio _sfxAudio;
 
     public bool IsAvailable => _isAvailable;
 
@@ -16,6 +18,12 @@ public class EnergyZone : MonoBehaviour
     public event Action ZoneExited;
     public event Action EnergyRestoreRequested;
     public event Action<bool> AvailabilityChanged;
+
+    [Inject]
+    public void Construct(SFXAudio sfxAudio)
+    {
+        _sfxAudio = sfxAudio;
+    }
 
     private void Update()
     {
@@ -60,6 +68,7 @@ public class EnergyZone : MonoBehaviour
         _nextRestoreTime = Time.time + _restoreCooldown;
         EnergyRestoreRequested?.Invoke();
         SetAvailability(false);
+        _sfxAudio?.PlayLoot();
     }
 
 
